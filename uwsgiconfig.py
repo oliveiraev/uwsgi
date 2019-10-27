@@ -1,26 +1,26 @@
 # uWSGI build system
 
+from distutils import sysconfig
+from optparse import OptionParser
+from threading import Thread, Lock
+import subprocess
+import sys
+import time
+import re
+import os
 uwsgi_version = '2.1-dev'
 
-import os
-import re
-import time
 uwsgi_os = os.environ.get('UWSGI_FORCE_OS', os.uname()[0])
 uwsgi_os_k = re.split('[-+_]', os.uname()[2])[0]
 uwsgi_os_v = os.uname()[3]
 uwsgi_cpu = os.uname()[4]
 
-import sys
-import subprocess
-from threading import Thread, Lock
-from optparse import OptionParser
 
 try:
     from queue import Queue
 except ImportError:
     from Queue import Queue
 
-from distutils import sysconfig
 
 try:
     import ConfigParser
@@ -41,10 +41,12 @@ else:
     if not GCC:
         GCC = 'gcc'
 
+
 def get_preprocessor():
     if 'clang' in GCC:
         return 'clang -xc core/clang_fake.c'
     return 'cpp'
+
 
 CPP = os.environ.get('CPP', get_preprocessor())
 
@@ -106,6 +108,7 @@ def print_compilation_output(default_str, verbose_str):
     elif default_str is not None:
         print(default_str)
 
+
 compile_queue = None
 print_lock = None
 thread_compilers = []
@@ -116,7 +119,8 @@ def thread_compiler(num):
         (objfile, cmdline) = compile_queue.get()
         if objfile:
             print_lock.acquire()
-            print_compilation_output("[thread %d][%s] %s" % (num, GCC, objfile), "[thread %d] %s" % (num, cmdline))
+            print_compilation_output("[thread %d][%s] %s" % (
+                num, GCC, objfile), "[thread %d] %s" % (num, cmdline))
             print_lock.release()
             ret = os.system(cmdline)
             if ret != 0:
@@ -140,7 +144,8 @@ def strip_prefix(prefix, string):
 
 
 def spcall(cmd):
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=open('uwsgibuild.log', 'w'))
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                         stderr=open('uwsgibuild.log', 'w'))
 
     if p.wait() == 0:
         if sys.version_info[0] > 2:
@@ -161,6 +166,7 @@ def uniq_warnings(elements):
             new_elements.append(element)
 
     return new_elements
+
 
 if uwsgi_version.endswith('-dev') and os.path.exists('%s/.git' % os.path.dirname(os.path.abspath(__file__))):
     try:
@@ -191,10 +197,12 @@ def test_snippet(snippet, CFLAGS=[], LDFLAGS=[], LIBS=[]):
                 snippet = bytes(snippet, sys.getdefaultencoding())
             else:
                 snippet = bytes(snippet)
-        cmd = "{0} {1} -xc - {2} {3} -o /dev/null".format(GCC, cflags, ldflags, libs)
+        cmd = "{0} {1} -xc - {2} {3} -o /dev/null".format(
+            GCC, cflags, ldflags, libs)
     else:
         cmd = " ".join([GCC, cflags, "-xc -", ldflags, libs, "-o /dev/null"])
-    p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE,
+                         stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     p.communicate(snippet)
     return p.returncode == 0
 
@@ -219,7 +227,8 @@ int main()
 
 
 def spcall3(cmd):
-    p = subprocess.Popen(cmd, shell=True, stdin=open('/dev/null'), stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    p = subprocess.Popen(cmd, shell=True, stdin=open(
+        '/dev/null'), stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
     if p.wait() == 0:
         if sys.version_info[0] > 2:
@@ -303,7 +312,8 @@ def build_uwsgi(uc, print_only=False, gcll=None):
     if 'UWSGI_EMBED_PLUGINS' in os.environ:
         ep = uc.get('embedded_plugins')
         if ep:
-            uc.set('embedded_plugins', ep + ',' + os.environ['UWSGI_EMBED_PLUGINS'])
+            uc.set('embedded_plugins', ep + ',' +
+                   os.environ['UWSGI_EMBED_PLUGINS'])
         else:
             uc.set('embedded_plugins', os.environ['UWSGI_EMBED_PLUGINS'])
 
@@ -341,7 +351,8 @@ def build_uwsgi(uc, print_only=False, gcll=None):
 
     if sys.version_info[0] >= 3:
         import binascii
-        uwsgi_cflags = binascii.b2a_hex(' '.join(cflags).encode('ascii')).decode('ascii')
+        uwsgi_cflags = binascii.b2a_hex(
+            ' '.join(cflags).encode('ascii')).decode('ascii')
     else:
         uwsgi_cflags = ' '.join(cflags).encode('hex')
 
@@ -391,10 +402,12 @@ def build_uwsgi(uc, print_only=False, gcll=None):
         uwsgi_config_py_content = zlib.compress(uwsgi_config_py_content, 9)
     if sys.version_info[0] >= 3:
         import binascii
-        uwsgi_config_py = binascii.b2a_hex(uwsgi_config_py_content).decode('ascii')
+        uwsgi_config_py = binascii.b2a_hex(
+            uwsgi_config_py_content).decode('ascii')
     else:
         uwsgi_config_py = uwsgi_config_py_content.encode('hex')
-    open('core/config_py.c', 'w').write('char *uwsgi_config_py = "%s";\n' % uwsgi_config_py)
+    open('core/config_py.c', 'w').write('char *uwsgi_config_py = "%s";\n' %
+                                        uwsgi_config_py)
     gcc_list.append('core/config_py')
 
     additional_sources = os.environ.get('UWSGI_ADDITIONAL_SOURCES')
@@ -409,7 +422,8 @@ def build_uwsgi(uc, print_only=False, gcll=None):
     else:
         cflags.append('-DUWSGI_CFLAGS=\\"%s\\"' % uwsgi_cflags)
     build_date = int(os.environ.get('SOURCE_DATE_EPOCH', time.time()))
-    cflags.append('-DUWSGI_BUILD_DATE="\\"%s\\""' % time.strftime("%d %B %Y %H:%M:%S", time.gmtime(build_date)))
+    cflags.append('-DUWSGI_BUILD_DATE="\\"%s\\""' %
+                  time.strftime("%d %B %Y %H:%M:%S", time.gmtime(build_date)))
 
     post_build = []
 
@@ -428,7 +442,8 @@ def build_uwsgi(uc, print_only=False, gcll=None):
             else:
                 if objfile == 'core/dot_h':
                     cflags.append('-g')
-                compile(' '.join(cflags), last_cflags_ts, objfile + '.o', file + '.c')
+                compile(' '.join(cflags), last_cflags_ts,
+                        objfile + '.o', file + '.c')
                 if objfile == 'core/dot_h':
                     cflags.pop()
 
@@ -512,19 +527,22 @@ def build_uwsgi(uc, print_only=False, gcll=None):
                         gcc_list.append('%s/%s' % (path, cfile))
                 for bfile in up.get('BINARY_LIST', []):
                     try:
-                        binary_link_cmd = "ld -r -b binary -o %s/%s.o %s/%s" % (path, bfile[1], path, bfile[1])
+                        binary_link_cmd = "ld -r -b binary -o %s/%s.o %s/%s" % (
+                            path, bfile[1], path, bfile[1])
                         print(binary_link_cmd)
                         if os.system(binary_link_cmd) != 0:
                             raise Exception('unable to link binary file')
                         for kind in ('start', 'end'):
-                            objcopy_cmd = "objcopy --redefine-sym _binary_%s_%s=%s_%s %s/%s.o" % (binarize('%s/%s' % (path, bfile[1])), kind, bfile[0], kind, path, bfile[1])
+                            objcopy_cmd = "objcopy --redefine-sym _binary_%s_%s=%s_%s %s/%s.o" % (
+                                binarize('%s/%s' % (path, bfile[1])), kind, bfile[0], kind, path, bfile[1])
                             print(objcopy_cmd)
                             if os.system(objcopy_cmd) != 0:
                                 raise Exception('unable to link binary file')
                         gcc_list.append('%s/%s.o' % (path, bfile[1]))
                     except Exception:
                         if uwsgi_os == 'Darwin':
-                            gcc_list.append('-sectcreate __DATA %s %s/%s' % (strip_prefix('_uwsgi_', bfile[0]), path, bfile[1]))
+                            gcc_list.append('-sectcreate __DATA %s %s/%s' %
+                                            (strip_prefix('_uwsgi_', bfile[0]), path, bfile[1]))
 
                 libs += up['LIBS']
 
@@ -763,7 +781,8 @@ class uConf(object):
         if (sys.version_info[0] == 2) or (gcc_major < 4) or (gcc_major == 4 and gcc_minor < 3):
             self.cflags += ['-fno-strict-aliasing']
         if gcc_major >= 4:
-            self.cflags += ['-Wextra', '-Wno-unused-parameter', '-Wno-missing-field-initializers']
+            self.cflags += ['-Wextra', '-Wno-unused-parameter',
+                            '-Wno-missing-field-initializers']
         if gcc_major == 4 and gcc_minor < 9:
             self.cflags.append('-Wno-format -Wno-format-security')
 
@@ -798,7 +817,8 @@ class uConf(object):
                     self.set(opt, iconfig.get('uwsgi', opt))
                 elif self.get(opt):
                     if self.get(opt).startswith('+'):
-                        self.set(opt, iconfig.get('uwsgi', opt) + self.get(opt)[1:])
+                        self.set(opt, iconfig.get(
+                            'uwsgi', opt) + self.get(opt)[1:])
                     elif self.get(opt) == 'null':
                         self.config.remove_option('uwsgi', opt)
 
@@ -1088,10 +1108,12 @@ class uConf(object):
                 self.ldflags.append('-undefined dynamic_lookup')
 
         if self.get('blacklist'):
-            self.cflags.append('-DUWSGI_BLACKLIST="\\"%s\\""' % self.get('blacklist'))
+            self.cflags.append('-DUWSGI_BLACKLIST="\\"%s\\""' %
+                               self.get('blacklist'))
 
         if self.get('whitelist'):
-            self.cflags.append('-DUWSGI_WHITELIST="\\"%s\\""' % self.get('whitelist'))
+            self.cflags.append('-DUWSGI_WHITELIST="\\"%s\\""' %
+                               self.get('whitelist'))
 
         has_pcre = False
 
@@ -1110,7 +1132,8 @@ class uConf(object):
             else:
                 pcreconf = spcall('pcre-config --libs')
                 if pcreconf is None:
-                    print("*** libpcre headers unavailable. uWSGI build is interrupted. You have to install pcre development package or disable pcre")
+                    print(
+                        "*** libpcre headers unavailable. uWSGI build is interrupted. You have to install pcre development package or disable pcre")
                     sys.exit(1)
                 else:
                     self.libs.append(pcreconf)
@@ -1160,11 +1183,14 @@ class uConf(object):
             if not self.embed_config:
                 self.embed_config = self.get('embed_config')
             if self.embed_config:
-                binary_link_cmd = "ld -r -b binary -o %s.o %s" % (binarize(self.embed_config), self.embed_config)
+                binary_link_cmd = "ld -r -b binary -o %s.o %s" % (
+                    binarize(self.embed_config), self.embed_config)
                 print(binary_link_cmd)
                 os.system(binary_link_cmd)
-                self.cflags.append("-DUWSGI_EMBED_CONFIG=_binary_%s_start" % binarize(self.embed_config))
-                self.cflags.append("-DUWSGI_EMBED_CONFIG_END=_binary_%s_end" % binarize(self.embed_config))
+                self.cflags.append(
+                    "-DUWSGI_EMBED_CONFIG=_binary_%s_start" % binarize(self.embed_config))
+                self.cflags.append(
+                    "-DUWSGI_EMBED_CONFIG_END=_binary_%s_end" % binarize(self.embed_config))
             embed_files = os.environ.get('UWSGI_EMBED_FILES')
             if not embed_files:
                 embed_files = self.get('embed_files')
@@ -1179,23 +1205,27 @@ class uConf(object):
                         for directory, directories, files in os.walk(ef):
                             for f in files:
                                 fname = "%s/%s" % (directory, f)
-                                binary_link_cmd = "ld -r -b binary -o %s.o %s" % (binarize(fname), fname)
+                                binary_link_cmd = "ld -r -b binary -o %s.o %s" % (
+                                    binarize(fname), fname)
                                 print(binary_link_cmd)
                                 os.system(binary_link_cmd)
                                 if symbase:
                                     for kind in ('start', 'end'):
-                                        objcopy_cmd = "objcopy --redefine-sym _binary_%s_%s=_binary_%s%s_%s build/%s.o" % (binarize(fname), kind, binarize(symbase), binarize(fname[len(ef):]), kind, binarize(fname))
+                                        objcopy_cmd = "objcopy --redefine-sym _binary_%s_%s=_binary_%s%s_%s build/%s.o" % (
+                                            binarize(fname), kind, binarize(symbase), binarize(fname[len(ef):]), kind, binarize(fname))
                                         print(objcopy_cmd)
                                         os.system(objcopy_cmd)
                                 binary_list.append(binarize(fname))
                     else:
-                        binary_link_cmd = "ld -r -b binary -o %s.o %s" % (binarize(ef), ef)
+                        binary_link_cmd = "ld -r -b binary -o %s.o %s" % (
+                            binarize(ef), ef)
                         print(binary_link_cmd)
                         os.system(binary_link_cmd)
                         binary_list.append(binarize(ef))
                         if symbase:
                             for kind in ('start', 'end'):
-                                objcopy_cmd = "objcopy --redefine-sym _binary_%s_%s=_binary_%s_%s build/%s.o" % (binarize(ef), kind, binarize(symbase), kind, binarize(ef))
+                                objcopy_cmd = "objcopy --redefine-sym _binary_%s_%s=_binary_%s_%s build/%s.o" % (
+                                    binarize(ef), kind, binarize(symbase), kind, binarize(ef))
                                 print(objcopy_cmd)
                                 os.system(objcopy_cmd)
 
@@ -1224,7 +1254,8 @@ class uConf(object):
         self.cflags.append('-DUWSGI_VERSION_MAJOR="' + uver_maj + '"')
         self.cflags.append('-DUWSGI_VERSION_MINOR="' + uver_min + '"')
         self.cflags.append('-DUWSGI_VERSION_REVISION="' + uver_rev + '"')
-        self.cflags.append('-DUWSGI_VERSION_CUSTOM="\\"' + uver_custom + '\\""')
+        self.cflags.append('-DUWSGI_VERSION_CUSTOM="\\"' +
+                           uver_custom + '\\""')
 
         if self.get('yaml'):
             self.cflags.append("-DUWSGI_YAML")
@@ -1261,7 +1292,8 @@ class uConf(object):
                         self.cflags.append("-DUWSGI_JSON_YAJL")
                         report['json'] = 'yajl'
                     elif self.get('json') == 'true':
-                        print("*** jansson and yajl headers unavailable. uWSGI build is interrupted. You have to install jansson or yajl development headers or disable JSON")
+                        print(
+                            "*** jansson and yajl headers unavailable. uWSGI build is interrupted. You have to install jansson or yajl development headers or disable JSON")
                         sys.exit(1)
             elif self.get('json') == 'jansson':
                 jsonconf = spcall("pkg-config --cflags jansson")
@@ -1345,7 +1377,8 @@ class uConf(object):
                     self.libs.append(xmlconf)
                     xmlconf = spcall("xml2-config --cflags")
                     if xmlconf is None:
-                        print("*** libxml2 headers unavailable. uWSGI build is interrupted. You have to install libxml2 development package or use libexpat or disable XML")
+                        print(
+                            "*** libxml2 headers unavailable. uWSGI build is interrupted. You have to install libxml2 development package or use libexpat or disable XML")
                         sys.exit(1)
                     else:
                         self.cflags.append(xmlconf)
@@ -1359,7 +1392,8 @@ class uConf(object):
                 report['xml'] = 'expat'
 
         if self.get('plugin_dir'):
-            self.cflags.append('-DUWSGI_PLUGIN_DIR="\\"%s\\""' % self.get('plugin_dir'))
+            self.cflags.append('-DUWSGI_PLUGIN_DIR="\\"%s\\""' %
+                               self.get('plugin_dir'))
             report['plugin_dir'] = self.get('plugin_dir')
 
         if self.get('debug'):
@@ -1462,12 +1496,14 @@ def build_plugin(path, uc, cflags, ldflags, libs, name=None):
 
     try:
         for opt in uc.config.options(name):
-            p_cflags.append('-DUWSGI_PLUGIN_%s_%s="%s"' % (name.upper(), opt.upper(), uc.config.get(name, opt, '1')))
+            p_cflags.append('-DUWSGI_PLUGIN_%s_%s="%s"' %
+                            (name.upper(), opt.upper(), uc.config.get(name, opt, '1')))
     except Exception:
         pass
 
     if uc:
-        plugin_dest = uc.get('plugin_build_dir', uc.get('plugin_dir')) + '/' + name + '_plugin'
+        plugin_dest = uc.get('plugin_build_dir', uc.get(
+            'plugin_dir')) + '/' + name + '_plugin'
     else:
         plugin_dest = name + '_plugin'
 
@@ -1489,7 +1525,8 @@ def build_plugin(path, uc, cflags, ldflags, libs, name=None):
             gcc_list.append(path + '/' + cfile)
     for bfile in up.get('BINARY_LIST', []):
         try:
-            binary_link_cmd = "ld -r -b binary -o %s/%s.o %s/%s" % (path, bfile[1], path, bfile[1])
+            binary_link_cmd = "ld -r -b binary -o %s/%s.o %s/%s" % (
+                path, bfile[1], path, bfile[1])
             print(binary_link_cmd)
             if os.system(binary_link_cmd) != 0:
                 raise Exception('unable to link binary file')
@@ -1508,7 +1545,8 @@ def build_plugin(path, uc, cflags, ldflags, libs, name=None):
             gcc_list.append('%s/%s.o' % (path, bfile[1]))
         except Exception:
             if uwsgi_os == 'Darwin':
-                gcc_list.append('-sectcreate __DATA %s %s/%s' % (strip_prefix('_uwsgi_', bfile[0]), path, bfile[1]))
+                gcc_list.append('-sectcreate __DATA %s %s/%s' %
+                                (strip_prefix('_uwsgi_', bfile[0]), path, bfile[1]))
 
     p_ldflags_blacklist = ('-Wl,--no-undefined',)
     for ldflag in p_ldflags_blacklist:
@@ -1573,7 +1611,8 @@ def build_plugin(path, uc, cflags, ldflags, libs, name=None):
             for rp in requires:
                 f.write("requires=%s\n" % rp)
             f.close()
-            objline = "objcopy %s.so --add-section uwsgi=.uwsgi_plugin_section %s.so" % (plugin_dest, plugin_dest)
+            objline = "objcopy %s.so --add-section uwsgi=.uwsgi_plugin_section %s.so" % (
+                plugin_dest, plugin_dest)
             print_compilation_output(None, objline)
             os.system(objline)
             os.unlink('.uwsgi_plugin_section')
@@ -1584,7 +1623,8 @@ def build_plugin(path, uc, cflags, ldflags, libs, name=None):
         post_build(uc)
 
     print("build time: %d seconds" % (time.time() - plugin_started_at))
-    print("*** %s plugin built and available in %s ***" % (name, plugin_dest + '.so'))
+    print("*** %s plugin built and available in %s ***" %
+          (name, plugin_dest + '.so'))
 
 
 def vararg_callback(option, opt_str, value, parser):
@@ -1602,18 +1642,29 @@ def vararg_callback(option, opt_str, value, parser):
     del parser.rargs[:len(value)]
     setattr(parser.values, option.dest, value)
 
+
 if __name__ == "__main__":
     parser = OptionParser()
-    parser.add_option("-b", "--build", action="callback", callback=vararg_callback, dest="build", help="build a specific profile if provided or default.ini", metavar="PROFILE")
-    parser.add_option("-f", "--cflags", action="callback", callback=vararg_callback, dest="cflags", help="same as --build but less verbose", metavar="PROFILE")
-    parser.add_option("-u", "--unbit", action="store_true", dest="unbit", help="build unbit profile")
-    parser.add_option("-p", "--plugin", action="callback", callback=vararg_callback, dest="plugin", help="build a plugin as shared library, optionally takes a build profile name", metavar="PLUGIN [PROFILE]")
-    parser.add_option("-x", "--extra-plugin", action="callback", callback=vararg_callback,  dest="extra_plugin", help="build an external plugin as shared library, takes an optional include dir", metavar="PLUGIN [NAME]")
-    parser.add_option("-c", "--clean", action="store_true", dest="clean", help="clean the build")
-    parser.add_option("-e", "--check", action="store_true", dest="check", help="run cppcheck")
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", help="more verbose build")
-    parser.add_option("-g", "--debug", action="store_true", dest="debug", help="build with debug symbols, affects only full build")
-    parser.add_option("-a", "--asan", action="store_true", dest="asan", help="build with address sanitizer, it's a debug option and affects only full build")
+    parser.add_option("-b", "--build", action="callback", callback=vararg_callback, dest="build",
+                      help="build a specific profile if provided or default.ini", metavar="PROFILE")
+    parser.add_option("-f", "--cflags", action="callback", callback=vararg_callback,
+                      dest="cflags", help="same as --build but less verbose", metavar="PROFILE")
+    parser.add_option("-u", "--unbit", action="store_true",
+                      dest="unbit", help="build unbit profile")
+    parser.add_option("-p", "--plugin", action="callback", callback=vararg_callback, dest="plugin",
+                      help="build a plugin as shared library, optionally takes a build profile name", metavar="PLUGIN [PROFILE]")
+    parser.add_option("-x", "--extra-plugin", action="callback", callback=vararg_callback,  dest="extra_plugin",
+                      help="build an external plugin as shared library, takes an optional include dir", metavar="PLUGIN [NAME]")
+    parser.add_option("-c", "--clean", action="store_true",
+                      dest="clean", help="clean the build")
+    parser.add_option("-e", "--check", action="store_true",
+                      dest="check", help="run cppcheck")
+    parser.add_option("-v", "--verbose", action="store_true",
+                      dest="verbose", help="more verbose build")
+    parser.add_option("-g", "--debug", action="store_true", dest="debug",
+                      help="build with debug symbols, affects only full build")
+    parser.add_option("-a", "--asan", action="store_true", dest="asan",
+                      help="build with address sanitizer, it's a debug option and affects only full build")
 
     (options, args) = parser.parse_args()
 
@@ -1628,7 +1679,8 @@ if __name__ == "__main__":
         add_ldflags.append('-g')
 
     if options.asan:
-        add_cflags.extend(['-g', '-fsanitize=address', '-fno-omit-frame-pointer'])
+        add_cflags.extend(['-g', '-fsanitize=address',
+                           '-fno-omit-frame-pointer'])
         add_ldflags.extend(['-g', '-fsanitize=address'])
 
     if options.build is not None or options.cflags is not None:
@@ -1673,11 +1725,14 @@ if __name__ == "__main__":
             name = options.plugin[2]
         except Exception:
             name = None
-        print("*** uWSGI building and linking plugin %s ***" % options.plugin[0])
+        print("*** uWSGI building and linking plugin %s ***" %
+              options.plugin[0])
         build_plugin(options.plugin[0], uc, cflags, ldflags, libs, name)
     elif options.extra_plugin:
-        print("*** uWSGI building and linking plugin from %s ***" % options.extra_plugin[0])
-        cflags = os.environ['UWSGI_PLUGINS_BUILDER_CFLAGS'].split() + os.environ.get("CFLAGS", "").split()
+        print("*** uWSGI building and linking plugin from %s ***" %
+              options.extra_plugin[0])
+        cflags = os.environ['UWSGI_PLUGINS_BUILDER_CFLAGS'].split(
+        ) + os.environ.get("CFLAGS", "").split()
         cflags.append('-I.uwsgi_plugins_builder/')
         ldflags = os.environ.get("LDFLAGS", "").split()
         name = None
@@ -1685,7 +1740,8 @@ if __name__ == "__main__":
             name = options.extra_plugin[1]
         except Exception:
             pass
-        build_plugin(options.extra_plugin[0], None, cflags, ldflags, None, name)
+        build_plugin(options.extra_plugin[0],
+                     None, cflags, ldflags, None, name)
     elif options.clean:
         os.system("rm -f core/*.o")
         os.system("rm -f proto/*.o")
@@ -1695,7 +1751,8 @@ if __name__ == "__main__":
         os.system("rm -f core/dot_h.c")
         os.system("rm -f core/config_py.c")
     elif options.check:
-        os.system("cppcheck --max-configs=1000 --enable=all -q core/ plugins/ proto/ lib/ apache2/")
+        os.system(
+            "cppcheck --max-configs=1000 --enable=all -q core/ plugins/ proto/ lib/ apache2/")
     else:
         parser.print_help()
         sys.exit(1)

@@ -1,13 +1,13 @@
 # uWSGI build system
-
-from distutils import sysconfig
-from optparse import OptionParser
-from threading import Thread, Lock
+import os
+import re
 import subprocess
 import sys
 import time
-import re
-import os
+from distutils import sysconfig
+from optparse import OptionParser
+from threading import Lock
+from threading import Thread
 
 uwsgi_version = "2.1-dev"
 

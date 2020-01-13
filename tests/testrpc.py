@@ -1,7 +1,9 @@
 import uwsgi
 
+
 def hello():
     pass
+
 
 def application(env, start_response):
     try:

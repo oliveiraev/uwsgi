@@ -124,6 +124,7 @@ def get_extra_require():
 
     return req
 
+
 setup(
     name='uWSGI',
     version=uc.uwsgi_version,

@@ -1,12 +1,13 @@
 import os
 import sys
-import uwsgiconfig as uc
 
 from setuptools import setup
-from setuptools.dist import Distribution
+from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 from setuptools.command.install_lib import install_lib
-from setuptools.command.build_ext import build_ext
+from setuptools.dist import Distribution
+
+import uwsgiconfig as uc
 
 try:
     from wheel.bdist_wheel import bdist_wheel

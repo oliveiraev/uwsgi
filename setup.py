@@ -15,7 +15,6 @@ try:
     HAS_WHEEL = True
 except ImportError:
     HAS_WHEEL = False
-
 """
 This is a hack allowing you installing
 uWSGI and uwsgidecorators via pip and easy_install
@@ -54,9 +53,8 @@ def patch_bin_path(cmd, conf):
         try:
             if not os.path.exists(cmd.install_scripts):
                 os.makedirs(cmd.install_scripts)
-            conf.set(
-                "bin_name", os.path.join(cmd.install_scripts, conf.get("bin_name"))
-            )
+            conf.set("bin_name",
+                     os.path.join(cmd.install_scripts, conf.get("bin_name")))
         except Exception:
             conf.set("bin_name", sys.prefix + "/bin/" + bin_name)
 
